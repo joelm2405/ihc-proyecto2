@@ -3,65 +3,92 @@ using UnityEngine;
 public class PlayerCrouch : MonoBehaviour
 {
     [Header("Configuración de Agacharse")]
-    [Tooltip("Altura de la cámara cuando está de pie")]
-    public float alturaStandard = 1.7f;
+    [Tooltip("Offset de altura cuando está de pie (0 = altura real del jugador)")]
+    public float offsetAlturaStandard = 0f;
 
-    [Tooltip("Altura de la cámara cuando está agachado")]
-    public float alturaAgachado = 1.0f;
+    [Tooltip("Cuánto bajar cuando se agacha (en metros)")]
+    public float cantidadAgacharse = 0.7f;
 
     [Tooltip("Velocidad de transición al agacharse")]
     public float velocidadTransicion = 5f;
 
-    [Header("Referencias")]
-    [Tooltip("Arrastra aquí el CenterEyeAnchor (la cámara)")]
-    public Transform cameraTransform;
+    [Header("Configuración de Altura Base")]
+    [Tooltip("Altura base del jugador (ajusta esto para ser más bajo/alto)")]
+    public float alturaBase = 0f;
 
-    [Tooltip("Arrastra aquí el CharacterController si lo tienes")]
+    [Header("Referencias (Opcional - se asignan automáticamente)")]
+    public Transform trackingSpace;
     public CharacterController characterController;
 
     // Estado interno
     private bool estaAgachado = false;
-    private float alturaObjetivo;
-    private Vector3 posicionCamaraInicial;
+    private float offsetObjetivo;
+    private float offsetActual;
+    private float alturaCharacterControllerOriginal;
+    private Vector3 centroCharacterControllerOriginal;
 
     void Start()
     {
-        // Si no asignaste la cámara manualmente, buscarla
-        if (cameraTransform == null)
+        // Buscar TrackingSpace si no está asignado
+        if (trackingSpace == null)
         {
-            // Buscar el CenterEyeAnchor
-            cameraTransform = transform.Find("TrackingSpace/CenterEyeAnchor");
+            trackingSpace = transform.Find("TrackingSpace");
 
-            if (cameraTransform == null)
+            if (trackingSpace == null)
             {
-                Debug.LogError("No se encontró CenterEyeAnchor. Asígnalo manualmente en el Inspector.");
+                // Intentar buscar por tipo
+                OVRCameraRig cameraRig = GetComponentInChildren<OVRCameraRig>();
+                if (cameraRig != null)
+                {
+                    trackingSpace = cameraRig.trackingSpace;
+                }
+
+                if (trackingSpace == null)
+                {
+                    Debug.LogError("No se encontró TrackingSpace. Asígnalo manualmente.");
+                    enabled = false;
+                    return;
+                }
             }
         }
 
-        // Si no asignaste el CharacterController, buscarlo
+        // Buscar CharacterController
         if (characterController == null)
         {
             characterController = GetComponent<CharacterController>();
         }
 
-        // Guardar altura inicial
-        if (cameraTransform != null)
+        // Guardar valores originales del CharacterController
+        if (characterController != null)
         {
-            posicionCamaraInicial = cameraTransform.localPosition;
-            alturaObjetivo = alturaStandard;
+            alturaCharacterControllerOriginal = characterController.height;
+            centroCharacterControllerOriginal = characterController.center;
         }
+
+        // Establecer altura inicial
+        offsetActual = offsetAlturaStandard + alturaBase;
+        offsetObjetivo = offsetAlturaStandard + alturaBase;
+
+        // Aplicar altura base inmediatamente
+        AplicarAltura(offsetActual);
+
+        Debug.Log($"PlayerCrouch inicializado. Altura base: {alturaBase}m, Agacharse: {cantidadAgacharse}m");
     }
 
     void Update()
     {
-        // Detectar el botón B del mando derecho (OVRInput.Button.Two)
+        // Detectar el botón B del mando derecho
         if (OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch))
         {
             ToggleCrouch();
         }
 
-        // Suavizar la transición de altura
-        SuavizarAltura();
+        // Suavizar la transición
+        if (Mathf.Abs(offsetActual - offsetObjetivo) > 0.001f)
+        {
+            offsetActual = Mathf.Lerp(offsetActual, offsetObjetivo, Time.deltaTime * velocidadTransicion);
+            AplicarAltura(offsetActual);
+        }
     }
 
     void ToggleCrouch()
@@ -71,44 +98,41 @@ public class PlayerCrouch : MonoBehaviour
         if (estaAgachado)
         {
             // Agacharse
-            alturaObjetivo = alturaAgachado;
-            Debug.Log("Agachándose");
+            offsetObjetivo = offsetAlturaStandard + alturaBase - cantidadAgacharse;
+            Debug.Log($"Agachándose - Nueva altura: {offsetObjetivo}m");
         }
         else
         {
             // Levantarse
-            alturaObjetivo = alturaStandard;
-            Debug.Log("Levantándose");
+            offsetObjetivo = offsetAlturaStandard + alturaBase;
+            Debug.Log($"Levantándose - Nueva altura: {offsetObjetivo}m");
         }
     }
 
-    void SuavizarAltura()
+    void AplicarAltura(float offset)
     {
-        if (cameraTransform == null) return;
+        if (trackingSpace == null) return;
 
-        // Calcular la nueva altura con interpolación suave
-        float alturaActual = cameraTransform.localPosition.y;
-        float nuevaAltura = Mathf.Lerp(alturaActual, alturaObjetivo, Time.deltaTime * velocidadTransicion);
+        // Mover el TrackingSpace hacia arriba/abajo
+        Vector3 nuevaPosicion = trackingSpace.localPosition;
+        nuevaPosicion.y = offset;
+        trackingSpace.localPosition = nuevaPosicion;
 
-        // Aplicar la nueva altura
-        Vector3 nuevaPosicion = cameraTransform.localPosition;
-        nuevaPosicion.y = nuevaAltura;
-        cameraTransform.localPosition = nuevaPosicion;
-
-        // Si tienes CharacterController, ajustar su altura también
+        // Ajustar CharacterController si existe
         if (characterController != null)
         {
-            float diferencia = alturaStandard - alturaAgachado;
-            characterController.height = alturaStandard - (alturaStandard - nuevaAltura);
+            // Calcular nueva altura del collider
+            float nuevaAltura = alturaCharacterControllerOriginal + offset;
+            characterController.height = nuevaAltura;
 
-            // Ajustar el centro del collider
-            Vector3 centro = characterController.center;
-            centro.y = nuevaAltura / 2;
-            characterController.center = centro;
+            // Ajustar el centro del collider para que la base quede en el suelo
+            Vector3 nuevoCentro = centroCharacterControllerOriginal;
+            nuevoCentro.y = nuevaAltura / 2f;
+            characterController.center = nuevoCentro;
         }
     }
 
-    // Método público por si quieres llamarlo desde otro script
+    // Métodos públicos
     public bool EstaAgachado()
     {
         return estaAgachado;
@@ -129,4 +153,16 @@ public class PlayerCrouch : MonoBehaviour
             ToggleCrouch();
         }
     }
+
+    // Para visualizar en el editor
+    void OnDrawGizmos()
+    {
+        if (!Application.isPlaying || trackingSpace == null) return;
+
+        // Dibujar línea de altura actual
+        Vector3 posicion = transform.position;
+        Gizmos.color = estaAgachado ? Color.yellow : Color.green;
+        Gizmos.DrawLine(posicion, posicion + Vector3.up * (offsetActual + 1.7f));
+    }
 }
+
