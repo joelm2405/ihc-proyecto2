@@ -203,7 +203,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: bed21b916f450754583f0b0d839b7615, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tiempoEspera: 5
+  tiempoEsperaInicio: 15
   duracionTotal: 30
   duracionAumento: 8
   duracionMaxima: 10
@@ -223,7 +223,7 @@ MonoBehaviour:
   sonidoTerremoto: {fileID: 0}
   volumenInicial: 0.3
   volumenMaximo: 0.8
-  mostrarDebug: 1
+  mostrarInfoConsola: 1
 --- !u!4 &231654061
 Transform:
   m_ObjectHideFlags: 0
