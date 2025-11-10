@@ -15,8 +15,16 @@ EditorBuildSettings:
     path: Assets/Scenes/3_Tutorial.unity
     guid: 9a5e370987d36b949947b1ef3a446dbb
   - enabled: 0
+    path: Assets/Scenes/Scene_House.unity
+    guid: 9df28576e625a7448a4d0d63431f871f
+  - enabled: 1
+    path: Assets/Scenes/Tutorial.unity
+    guid: b33aaf66a13daf24699d836631b32872
+  - enabled: 1
     path: Assets/Scenes/Scene_1.unity
     guid: 99c9720ab356a0642a771bea13969a05
+    path: Assets/Scenes/Apartment.unity
+    guid: de1f219da5d4db3459420411c8c7503a
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: 6a675e95fac60c449bf65968448ac0b8, type: 2}
     com.unity.input.settings.actions: {fileID: -944628639613478452, guid: 052faaac586de48259a63d0c4782560b, type: 3}
