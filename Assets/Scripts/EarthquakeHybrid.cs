@@ -2,10 +2,9 @@ using UnityEngine;
 using System.Collections;
 
 /// <summary>
-/// Sistema híbrido de terremoto que combina:
-/// - Perlin Noise para movimiento natural de cámara
-/// - Oscilación sin/cos para efectos específicos
-/// - Vibración de alta frecuencia para realismo
+/// Sistema de terremoto para VR - MUEVE EL ESCENARIO, NO EL JUGADOR
+/// El jugador VR mantiene total libertad de movimiento
+/// Solo el entorno (casa/mundo) se mueve
 /// </summary>
 public class EarthquakeHybrid : MonoBehaviour
 {
@@ -13,127 +12,170 @@ public class EarthquakeHybrid : MonoBehaviour
     [Tooltip("Tiempo de espera antes de iniciar el terremoto (en segundos)")]
     [Range(0f, 60f)]
     public float tiempoEsperaInicio = 10f;
-    
+
     [Tooltip("Duración total del terremoto (en segundos)")]
     [Range(5f, 120f)]
     public float duracionTotal = 30f;
-    
-    [Header("📈 Fases del Terremoto (RF15)")]
+
+    [Header("📈 Fases del Terremoto")]
     [Tooltip("Duración de la fase de aumento (leve → fuerte)")]
     [Range(2f, 30f)]
     public float duracionAumento = 8f;
-    
+
     [Tooltip("Duración de la fase de intensidad máxima")]
     [Range(2f, 30f)]
     public float duracionMaxima = 10f;
-    // La fase de disminución se calcula automáticamente
-    
+
     [Header("💪 Intensidades")]
     [Tooltip("Intensidad inicial (muy leve)")]
-    [Range(0.001f, 0.1f)]
-    public float intensidadInicial = 0.01f;
-    
-    [Tooltip("Intensidad máxima (más alto = más fuerte)")]
-    [Range(0.05f, 0.3f)]
-    public float intensidadMaxima = 0.12f;
-    
-    [Header("🌊 Movimiento Base (Perlin Noise - Suave)")]
-    [Tooltip("Frecuencia del movimiento principal (recomendado: 15-25)")]
-    [Range(10f, 40f)]
-    public float frecuenciaBase = 20f;
-    
-    [Tooltip("Intensidad de rotación de cámara (0 = sin rotación)")]
-    [Range(0f, 2f)]
-    public float intensidadRotacion = 0.8f;
-    
-    [Header("⚡ Vibración Secundaria (Detalle Realista)")]
+    [Range(0.0001f, 0.01f)]
+    public float intensidadInicial = 0.002f;
+
+    [Tooltip("Intensidad máxima")]
+    [Range(0.005f, 0.1f)]
+    public float intensidadMaxima = 0.03f;
+
+    [Header("🏠 CONFIGURACIÓN DEL ESCENARIO")]
+    [Tooltip("Transform del escenario/casa que se va a mover (NO el jugador)")]
+    public Transform escenarioTransform;
+
+    [Tooltip("Nombre del GameObject del escenario (si no está asignado manualmente)")]
+    public string nombreEscenario = "Escenario";
+
+    [Header("🌊 Movimiento (MUY SUAVE)")]
+    [Tooltip("Frecuencia del movimiento principal")]
+    [Range(0.5f, 5f)]
+    public float frecuenciaBase = 1.5f;
+
+    [Tooltip("Multiplicador de movimiento vertical (arriba/abajo)")]
+    [Range(0.5f, 3f)]
+    public float multiplicadorVertical = 1.5f;
+
+    [Tooltip("Multiplicador de movimiento horizontal")]
+    [Range(0.05f, 1f)]
+    public float multiplicadorHorizontal = 0.3f;
+
+    [Tooltip("Intensidad de rotación del escenario")]
+    [Range(0f, 1f)]
+    public float intensidadRotacion = 0.2f;
+
+    [Header("⚡ Vibración Secundaria")]
     [Tooltip("Activar vibración de alta frecuencia")]
     public bool usarVibracion = true;
-    
-    [Tooltip("Frecuencia de vibración (recomendado: 40-60)")]
-    [Range(30f, 100f)]
-    public float frecuenciaVibracion = 50f;
-    
-    [Tooltip("Intensidad de la vibración (más bajo = más sutil)")]
-    [Range(0f, 0.5f)]
-    public float intensidadVibracion = 0.15f;
-    
-    [Header("↔️ Oscilación Direccional (Opcional)")]
-    [Tooltip("Agregar oscilación dominante en un eje")]
+
+    [Tooltip("Frecuencia de vibración")]
+    [Range(5f, 30f)]
+    public float frecuenciaVibracion = 12f;
+
+    [Tooltip("Intensidad de la vibración")]
+    [Range(0f, 0.15f)]
+    public float intensidadVibracion = 0.05f;
+
+    [Header("↔️ Oscilación Direccional")]
+    [Tooltip("Agregar oscilación dominante")]
     public bool usarOscilacionDireccional = true;
-    
-    [Tooltip("Eje principal de oscilación")]
-    public Vector3 direccionOscilacion = new Vector3(1f, 0.2f, 0.5f);
-    
-    [Tooltip("Frecuencia de oscilación (más bajo = más lento)")]
-    [Range(0.5f, 5f)]
-    public float frecuenciaOscilacion = 2f;
-    
-    [Range(0f, 1f)]
-    public float intensidadOscilacion = 0.3f;
-    
-    [Header("🎯 Referencias")]
-    [Tooltip("Transform de la cámara (CenterEyeAnchor). Si está vacío, se busca automáticamente")]
-    public Transform cameraTransform;
-    
-    [Header("🔊 Audio (RNF04)")]
+
+    [Tooltip("Eje principal (énfasis vertical)")]
+    public Vector3 direccionOscilacion = new Vector3(0.3f, 1f, 0.2f);
+
+    [Tooltip("Frecuencia de oscilación")]
+    [Range(0.3f, 2f)]
+    public float frecuenciaOscilacion = 0.7f;
+
+    [Range(0f, 0.5f)]
+    public float intensidadOscilacion = 0.2f;
+
+    [Header("🔊 Audio")]
     [Tooltip("AudioSource para el sonido del terremoto")]
     public AudioSource audioSource;
-    
+
     [Tooltip("Clip de audio del terremoto")]
     public AudioClip sonidoTerremoto;
-    
-    [Tooltip("Volumen inicial (fase de aumento)")]
+
+    [Tooltip("Volumen inicial")]
     [Range(0f, 1f)]
     public float volumenInicial = 0.3f;
-    
-    [Tooltip("Volumen máximo (fase de máxima intensidad)")]
+
+    [Tooltip("Volumen máximo")]
     [Range(0f, 1f)]
     public float volumenMaximo = 0.8f;
-    
+
+    [Header("🔧 Suavizado")]
+    [Tooltip("Velocidad de suavizado del movimiento")]
+    [Range(3f, 20f)]
+    public float velocidadSuavizado = 10f;
+
     // Variables privadas
-    private Vector3 posicionOriginal;
-    private Quaternion rotacionOriginal;
+    private Vector3 posicionOriginalEscenario;
+    private Quaternion rotacionOriginalEscenario;
     private bool terremotoActivo = false;
     private float tiempoTranscurrido = 0f;
     private float intensidadActual = 0f;
-    private float offsetPerlin; // Para evitar patrones repetitivos
+    private float offsetPerlin;
     private bool terremotoCompletado = false;
+
+    // Para suavizado
+    private Vector3 desplazamientoActual;
+    private Quaternion rotacionActual;
 
     void Start()
     {
-        // Buscar CenterEyeAnchor si no está asignado
-        if (cameraTransform == null)
+        // Buscar el escenario si no está asignado
+        if (escenarioTransform == null)
         {
-            GameObject centerEye = GameObject.Find("CenterEyeAnchor");
-            if (centerEye != null)
+            GameObject escenario = GameObject.Find(nombreEscenario);
+
+            if (escenario == null)
             {
-                cameraTransform = centerEye.transform;
-                Debug.Log("✅ CenterEyeAnchor encontrado automáticamente");
+                // Intentar otros nombres comunes
+                string[] nombresComunes = { "Casa", "House", "Edificio", "Building", "Environment", "World", "Map", "Scene" };
+
+                foreach (string nombre in nombresComunes)
+                {
+                    escenario = GameObject.Find(nombre);
+                    if (escenario != null)
+                    {
+                        Debug.Log($"✅ Escenario encontrado: {nombre}");
+                        break;
+                    }
+                }
+            }
+
+            if (escenario != null)
+            {
+                escenarioTransform = escenario.transform;
             }
             else
             {
-                Debug.LogError("❌ No se encontró CenterEyeAnchor. Por favor, asigna la cámara manualmente en el Inspector.");
+                Debug.LogError("❌ ERROR: No se encontró el escenario.");
+                Debug.LogError("Por favor, asigna manualmente el GameObject de tu casa/escenario en el Inspector.");
+                Debug.LogError("O asegúrate que el objeto se llame 'Escenario', 'Casa', o 'House'");
                 enabled = false;
                 return;
             }
         }
-        
-        // Guardar estado original
-        posicionOriginal = cameraTransform.localPosition;
-        rotacionOriginal = cameraTransform.localRotation;
-        
-        // Offset aleatorio para Perlin Noise (hace que cada terremoto sea diferente)
+
+        // CRÍTICO: Guardar la posición ACTUAL del escenario (no modificarla)
+        posicionOriginalEscenario = escenarioTransform.position;
+        rotacionOriginalEscenario = escenarioTransform.rotation;
+
+        // Inicializar variables de suavizado
+        desplazamientoActual = Vector3.zero;
+        rotacionActual = Quaternion.identity;
+
+        // Offset aleatorio
         offsetPerlin = Random.Range(0f, 1000f);
-        
+
         // Configurar audio
         ConfigurarAudio();
-        
-        // Programar inicio automático
+
+        // Programar inicio
         Invoke("IniciarTerremoto", tiempoEsperaInicio);
-        
-        Debug.Log($"🌋 Terremoto programado para iniciar automáticamente en {tiempoEsperaInicio} segundos");
-        Debug.Log($"📊 Duración total: {duracionTotal}s (Aumento: {duracionAumento}s | Máxima: {duracionMaxima}s | Disminución: {duracionTotal - duracionAumento - duracionMaxima}s)");
+
+        Debug.Log($"🌋 Terremoto programado para {tiempoEsperaInicio}s");
+        Debug.Log($"🏠 Escenario a mover: {escenarioTransform.name}");
+        Debug.Log($"📍 Posición original guardada: {posicionOriginalEscenario}");
+        Debug.Log($"👤 El jugador VR mantendrá total libertad de movimiento");
     }
 
     void ConfigurarAudio()
@@ -142,10 +184,10 @@ public class EarthquakeHybrid : MonoBehaviour
         {
             audioSource = gameObject.AddComponent<AudioSource>();
         }
-        
+
         audioSource.clip = sonidoTerremoto;
         audioSource.loop = true;
-        audioSource.spatialBlend = 1f; // Audio 3D
+        audioSource.spatialBlend = 1f;
         audioSource.volume = 0f;
         audioSource.playOnAwake = false;
     }
@@ -154,38 +196,31 @@ public class EarthquakeHybrid : MonoBehaviour
     {
         if (terremotoCompletado)
         {
-            Debug.LogWarning("⚠️ El terremoto ya se ejecutó. No se puede iniciar nuevamente.");
+            Debug.LogWarning("⚠️ El terremoto ya se ejecutó.");
             return;
         }
-        
+
         terremotoActivo = true;
         tiempoTranscurrido = 0f;
-        
-        // Iniciar audio
+
         if (audioSource != null && sonidoTerremoto != null)
         {
             audioSource.Play();
         }
-        
-        Debug.Log("🌋 ¡TERREMOTO INICIADO AUTOMÁTICAMENTE!");
+
+        Debug.Log("🌋 ¡TERREMOTO INICIADO! Moviendo escenario...");
     }
 
     void Update()
     {
         if (!terremotoActivo) return;
-        
+
         tiempoTranscurrido += Time.deltaTime;
-        
-        // Calcular intensidad progresiva (RF15)
         intensidadActual = CalcularIntensidad(tiempoTranscurrido);
-        
-        // Aplicar el efecto de terremoto
-        AplicarTerremoto();
-        
-        // Actualizar volumen del audio según intensidad
+
+        AplicarMovimientoEscenario();
         ActualizarAudio();
-        
-        // Verificar fin automático
+
         if (tiempoTranscurrido >= duracionTotal)
         {
             FinalizarTerremoto();
@@ -194,80 +229,100 @@ public class EarthquakeHybrid : MonoBehaviour
 
     float CalcularIntensidad(float tiempo)
     {
-        // Fase 1: Aumento gradual
         if (tiempo < duracionAumento)
         {
             float progreso = tiempo / duracionAumento;
-            // Usar curva suave (ease-in)
-            progreso = progreso * progreso;
+            progreso = Mathf.SmoothStep(0f, 1f, progreso);
             return Mathf.Lerp(intensidadInicial, intensidadMaxima, progreso);
         }
-        // Fase 2: Intensidad máxima
         else if (tiempo < duracionAumento + duracionMaxima)
         {
-            // Agregar variación aleatoria en la fase máxima (más realista)
-            float variacion = Mathf.PerlinNoise(tiempo * 0.5f, offsetPerlin) * 0.2f;
+            float variacion = Mathf.PerlinNoise(tiempo * 0.2f, offsetPerlin) * 0.12f;
             return intensidadMaxima * (1f + variacion);
         }
-        // Fase 3: Disminución gradual
         else
         {
             float tiempoDisminucion = tiempo - (duracionAumento + duracionMaxima);
             float duracionDisminucion = duracionTotal - (duracionAumento + duracionMaxima);
             float progreso = tiempoDisminucion / duracionDisminucion;
-            // Usar curva suave (ease-out)
-            progreso = 1f - (1f - progreso) * (1f - progreso);
+            progreso = Mathf.SmoothStep(0f, 1f, progreso);
             return Mathf.Lerp(intensidadMaxima, intensidadInicial, progreso);
         }
     }
 
-    void AplicarTerremoto()
+    void AplicarMovimientoEscenario()
     {
-        Vector3 desplazamiento = Vector3.zero;
-        Quaternion rotacionExtra = Quaternion.identity;
-        
-        // 1. MOVIMIENTO BASE CON PERLIN NOISE (natural y suave)
+        Vector3 desplazamientoTarget = Vector3.zero;
         float time = Time.time + offsetPerlin;
+
+        // 1. MOVIMIENTO BASE CON PERLIN NOISE
         float x = (Mathf.PerlinNoise(time * frecuenciaBase, 0f) - 0.5f) * 2f;
         float y = (Mathf.PerlinNoise(0f, time * frecuenciaBase) - 0.5f) * 2f;
         float z = (Mathf.PerlinNoise(time * frecuenciaBase, time * frecuenciaBase) - 0.5f) * 2f;
-        
-        desplazamiento += new Vector3(x, y, z) * intensidadActual;
-        
-        // 2. VIBRACIÓN DE ALTA FRECUENCIA (detalle realista)
+
+        desplazamientoTarget += new Vector3(
+            x * multiplicadorHorizontal,
+            y * multiplicadorVertical,
+            z * multiplicadorHorizontal
+        ) * intensidadActual;
+
+        // 2. VIBRACIÓN SUTIL
         if (usarVibracion)
         {
             float vx = (Mathf.PerlinNoise(time * frecuenciaVibracion, 500f) - 0.5f) * 2f;
             float vy = (Mathf.PerlinNoise(500f, time * frecuenciaVibracion) - 0.5f) * 2f;
             float vz = (Mathf.PerlinNoise(time * frecuenciaVibracion, time * frecuenciaVibracion + 500f) - 0.5f) * 2f;
-            
-            desplazamiento += new Vector3(vx, vy, vz) * intensidadActual * intensidadVibracion;
+
+            desplazamientoTarget += new Vector3(
+                vx * multiplicadorHorizontal * 0.4f,
+                vy * multiplicadorVertical * 0.4f,
+                vz * multiplicadorHorizontal * 0.4f
+            ) * intensidadActual * intensidadVibracion;
         }
-        
-        // 3. OSCILACIÓN DIRECCIONAL (simula onda sísmica dominante)
+
+        // 3. OSCILACIÓN DIRECCIONAL
         if (usarOscilacionDireccional)
         {
             float onda = Mathf.Sin(time * frecuenciaOscilacion * Mathf.PI);
-            desplazamiento += direccionOscilacion.normalized * onda * intensidadActual * intensidadOscilacion;
+            Vector3 oscilacion = direccionOscilacion.normalized * onda * intensidadActual * intensidadOscilacion;
+
+            oscilacion.x *= multiplicadorHorizontal;
+            oscilacion.y *= multiplicadorVertical;
+            oscilacion.z *= multiplicadorHorizontal;
+
+            desplazamientoTarget += oscilacion;
         }
-        
-        // 4. ROTACIÓN DE CÁMARA (simula pérdida de equilibrio)
-        float rotX = (Mathf.PerlinNoise(time * frecuenciaBase * 0.4f, 100f) - 0.5f) * intensidadActual * intensidadRotacion * 15f;
-        float rotZ = (Mathf.PerlinNoise(100f, time * frecuenciaBase * 0.4f) - 0.5f) * intensidadActual * intensidadRotacion * 15f;
-        
-        rotacionExtra = Quaternion.Euler(rotX, 0f, rotZ);
-        
-        // APLICAR TRANSFORMACIONES
-        cameraTransform.localPosition = posicionOriginal + desplazamiento;
-        cameraTransform.localRotation = rotacionOriginal * rotacionExtra;
+
+        // SUAVIZAR el desplazamiento
+        desplazamientoActual = Vector3.Lerp(
+            desplazamientoActual,
+            desplazamientoTarget,
+            Time.deltaTime * velocidadSuavizado
+        );
+
+        // 4. ROTACIÓN DEL ESCENARIO (muy sutil)
+        float rotX = (Mathf.PerlinNoise(time * frecuenciaBase * 0.3f, 100f) - 0.5f) * intensidadActual * intensidadRotacion * 1.5f;
+        float rotZ = (Mathf.PerlinNoise(100f, time * frecuenciaBase * 0.3f) - 0.5f) * intensidadActual * intensidadRotacion * 1.5f;
+
+        Quaternion rotacionTarget = Quaternion.Euler(rotX, 0f, rotZ);
+
+        // SUAVIZAR la rotación
+        rotacionActual = Quaternion.Slerp(
+            rotacionActual,
+            rotacionTarget,
+            Time.deltaTime * velocidadSuavizado * 0.7f
+        );
+
+        // APLICAR AL ESCENARIO (no al jugador)
+        escenarioTransform.position = posicionOriginalEscenario + desplazamientoActual;
+        escenarioTransform.rotation = rotacionOriginalEscenario * rotacionActual;
     }
 
     void ActualizarAudio()
     {
         if (audioSource != null && audioSource.isPlaying)
         {
-            // Interpolar volumen según intensidad
-            float volumenTarget = Mathf.Lerp(volumenInicial, volumenMaximo, 
+            float volumenTarget = Mathf.Lerp(volumenInicial, volumenMaximo,
                 (intensidadActual - intensidadInicial) / (intensidadMaxima - intensidadInicial));
             audioSource.volume = Mathf.Lerp(audioSource.volume, volumenTarget, Time.deltaTime * 2f);
         }
@@ -277,157 +332,115 @@ public class EarthquakeHybrid : MonoBehaviour
     {
         terremotoActivo = false;
         terremotoCompletado = true;
-        
-        // Fade out del audio
+
         if (audioSource != null && audioSource.isPlaying)
         {
-            StartCoroutine(FadeOutAudio(1f));
+            StartCoroutine(FadeOutAudio(1.5f));
         }
-        
-        // Volver suavemente a la posición original
-        StartCoroutine(VolverAPosicionOriginal(2f));
-        
-        Debug.Log("✅ Terremoto finalizado automáticamente");
-        
-        // Aquí puedes disparar eventos para el siguiente paso (RF07)
-        // Ejemplo: Activar la mochila de emergencia
-        // EventManager.OnTerremotoFinalizado?.Invoke();
+
+        StartCoroutine(VolverEscenarioAPosicionOriginal(3f));
+
+        Debug.Log("✅ Terremoto finalizado - Escenario volviendo a posición original");
     }
 
     IEnumerator FadeOutAudio(float duracion)
     {
         if (audioSource == null) yield break;
-        
+
         float volumeInicial = audioSource.volume;
         float elapsed = 0f;
-        
+
         while (elapsed < duracion)
         {
             elapsed += Time.deltaTime;
             audioSource.volume = Mathf.Lerp(volumeInicial, 0f, elapsed / duracion);
             yield return null;
         }
-        
+
         audioSource.Stop();
         audioSource.volume = volumenInicial;
     }
 
-    IEnumerator VolverAPosicionOriginal(float duracion)
+    IEnumerator VolverEscenarioAPosicionOriginal(float duracion)
     {
-        Vector3 posInicial = cameraTransform.localPosition;
-        Quaternion rotInicial = cameraTransform.localRotation;
+        Vector3 posInicial = escenarioTransform.position;
+        Quaternion rotInicial = escenarioTransform.rotation;
         float elapsed = 0f;
-        
+
         while (elapsed < duracion)
         {
             elapsed += Time.deltaTime;
-            float t = elapsed / duracion;
-            // Ease out
-            t = 1f - (1f - t) * (1f - t);
-            
-            cameraTransform.localPosition = Vector3.Lerp(posInicial, posicionOriginal, t);
-            cameraTransform.localRotation = Quaternion.Slerp(rotInicial, rotacionOriginal, t);
+            float t = Mathf.SmoothStep(0f, 1f, elapsed / duracion);
+
+            escenarioTransform.position = Vector3.Lerp(posInicial, posicionOriginalEscenario, t);
+            escenarioTransform.rotation = Quaternion.Slerp(rotInicial, rotacionOriginalEscenario, t);
             yield return null;
         }
-        
-        cameraTransform.localPosition = posicionOriginal;
-        cameraTransform.localRotation = rotacionOriginal;
+
+        escenarioTransform.position = posicionOriginalEscenario;
+        escenarioTransform.rotation = rotacionOriginalEscenario;
+
+        Debug.Log("🏠 Escenario restaurado a posición original");
     }
 
-    // MÉTODOS PÚBLICOS (para que otros scripts puedan consultar el estado)
+    // MÉTODOS PÚBLICOS
+    public float GetIntensidadActual() => intensidadActual;
+    public bool EstaTerremotoActivo() => terremotoActivo;
+    public bool TerremotoHaFinalizado() => terremotoCompletado;
+    public float GetTiempoTranscurrido() => tiempoTranscurrido;
+    public float GetTiempoRestante() => terremotoActivo ? Mathf.Max(0f, duracionTotal - tiempoTranscurrido) : 0f;
 
-    /// <summary>
-    /// Devuelve la intensidad actual del terremoto
-    /// </summary>
-    public float GetIntensidadActual()
-    {
-        return intensidadActual;
-    }
-
-    /// <summary>
-    /// Devuelve si el terremoto está activo en este momento
-    /// </summary>
-    public bool EstaTerremotoActivo()
-    {
-        return terremotoActivo;
-    }
-
-    /// <summary>
-    /// Devuelve si el terremoto ya finalizó
-    /// </summary>
-    public bool TerremotoHaFinalizado()
-    {
-        return terremotoCompletado;
-    }
-
-    /// <summary>
-    /// Devuelve el tiempo transcurrido del terremoto
-    /// </summary>
-    public float GetTiempoTranscurrido()
-    {
-        return tiempoTranscurrido;
-    }
-
-    /// <summary>
-    /// Devuelve el tiempo restante hasta que finalice el terremoto
-    /// </summary>
-    public float GetTiempoRestante()
-    {
-        if (!terremotoActivo) return 0f;
-        return Mathf.Max(0f, duracionTotal - tiempoTranscurrido);
-    }
-
-    // INFORMACIÓN EN CONSOLA (Solo para desarrollo)
 #if UNITY_EDITOR
-    [Header("📊 Información en Tiempo Real (Solo Editor)")]
+    [Header("📊 Debug")]
     [SerializeField] private bool mostrarInfoConsola = true;
 
     void OnGUI()
     {
         if (!mostrarInfoConsola) return;
         
-        GUIStyle estiloLabel = new GUIStyle(GUI.skin.label);
-        estiloLabel.fontSize = 12;
-        estiloLabel.normal.textColor = Color.white;
+        GUIStyle style = new GUIStyle(GUI.skin.label);
+        style.fontSize = 12;
+        style.normal.textColor = Color.white;
         
-        // Fondo semi-transparente
-        GUI.Box(new Rect(10, 10, 320, 150), "");
+        GUI.Box(new Rect(10, 10, 400, 200), "");
         
-        int yPos = 20;
+        int y = 20;
+        
+        GUI.Label(new Rect(20, y, 380, 25), $"🏠 Escenario: {(escenarioTransform != null ? escenarioTransform.name : "NO ASIGNADO")}", style);
+        y += 25;
+        
+        if (escenarioTransform != null)
+        {
+            GUI.Label(new Rect(20, y, 380, 25), $"📍 Pos Original: {posicionOriginalEscenario}", style);
+            y += 25;
+            GUI.Label(new Rect(20, y, 380, 25), $"📍 Pos Actual: {escenarioTransform.position}", style);
+            y += 25;
+        }
         
         if (!terremotoActivo && !terremotoCompletado)
         {
-            GUI.Label(new Rect(20, yPos, 300, 25), $"⏳ Esperando inicio: {tiempoEsperaInicio}s", estiloLabel);
+            GUI.Label(new Rect(20, y, 380, 25), $"⏳ Inicio en: {tiempoEsperaInicio}s", style);
         }
         else if (terremotoActivo)
         {
-            GUI.Label(new Rect(20, yPos, 300, 25), $"🌋 TERREMOTO ACTIVO", estiloLabel);
-            yPos += 25;
-            GUI.Label(new Rect(20, yPos, 300, 25), $"Intensidad: {intensidadActual:F4}", estiloLabel);
-            yPos += 25;
-            GUI.Label(new Rect(20, yPos, 300, 25), $"Tiempo: {tiempoTranscurrido:F1}s / {duracionTotal:F0}s", estiloLabel);
-            yPos += 25;
-            GUI.Label(new Rect(20, yPos, 300, 25), $"Fase: {ObtenerFaseActual()}", estiloLabel);
-            yPos += 25;
+            GUI.Label(new Rect(20, y, 380, 25), "🌋 TERREMOTO ACTIVO - ESCENARIO MOVIÉNDOSE", style);
+            y += 25;
+            GUI.Label(new Rect(20, y, 380, 25), $"Intensidad: {intensidadActual:F5}", style);
+            y += 25;
+            GUI.Label(new Rect(20, y, 380, 25), $"Desplazamiento: {desplazamientoActual.magnitude:F4}m", style);
+            y += 25;
+            GUI.Label(new Rect(20, y, 380, 25), $"Tiempo: {tiempoTranscurrido:F1}s / {duracionTotal:F0}s", style);
+            y += 25;
             
             if (audioSource != null)
             {
-                GUI.Label(new Rect(20, yPos, 300, 25), $"Volumen: {audioSource.volume:F2}", estiloLabel);
+                GUI.Label(new Rect(20, y, 380, 25), $"Audio: {audioSource.volume:F2}", style);
             }
         }
         else if (terremotoCompletado)
         {
-            GUI.Label(new Rect(20, yPos, 300, 25), $"✅ Terremoto Completado", estiloLabel);
+            GUI.Label(new Rect(20, y, 380, 25), "✅ Completado - Jugador tiene control total", style);
         }
-    }
-
-    string ObtenerFaseActual()
-    {
-        if (!terremotoActivo) return "Inactivo";
-        if (tiempoTranscurrido < duracionAumento) return "🔼 Aumentando";
-        if (tiempoTranscurrido < duracionAumento + duracionMaxima) return "🔥 Máxima Intensidad";
-        return "🔽 Disminuyendo";
     }
 #endif
 }
-

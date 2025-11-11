@@ -119,6 +119,11 @@ NavMeshSettings:
     debug:
       m_Flags: 0
   m_NavMeshData: {fileID: 0}
+--- !u!4 &191401758 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 451208, guid: 23d25b2e2d4364dd4b92c52ef40cd36e, type: 3}
+  m_PrefabInstance: {fileID: 762714035}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &224854072
 GameObject:
   m_ObjectHideFlags: 0
@@ -208,21 +213,25 @@ MonoBehaviour:
   duracionAumento: 8
   duracionMaxima: 10
   intensidadInicial: 0.01
-  intensidadMaxima: 0.12
-  frecuenciaBase: 20
+  intensidadMaxima: 0.1
+  escenarioTransform: {fileID: 191401758}
+  nombreEscenario: Escenario
+  frecuenciaBase: 5
+  multiplicadorVertical: 2.5
+  multiplicadorHorizontal: 0.4
   intensidadRotacion: 0.8
   usarVibracion: 1
-  frecuenciaVibracion: 50
+  frecuenciaVibracion: 30
   intensidadVibracion: 0.15
   usarOscilacionDireccional: 1
   direccionOscilacion: {x: 1, y: 0.2, z: 0.5}
   frecuenciaOscilacion: 2
   intensidadOscilacion: 0.3
-  cameraTransform: {fileID: 688904183}
   audioSource: {fileID: 0}
   sonidoTerremoto: {fileID: 0}
   volumenInicial: 0.3
   volumenMaximo: 0.8
+  velocidadSuavizado: 8
   mostrarInfoConsola: 1
 --- !u!4 &231654061
 Transform:
