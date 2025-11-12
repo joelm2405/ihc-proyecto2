@@ -5,8 +5,8 @@ public class MapSelectorManager : MonoBehaviour
 {   
     //reemplazar mapa1 y mapa2 por los nombres de las escenas reales
     
-    [SerializeField] string sceneMap1 = "mapa1";
-    [SerializeField] string sceneMap2 = "mapa2";
+    [SerializeField] string sceneMap1 = "Apartment";
+    [SerializeField] string sceneMap2 = "Scene_House";
     [SerializeField] string sceneMenu = "1_Start_Menu";
 
     public void LoadMap1()

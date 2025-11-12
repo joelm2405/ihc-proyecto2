@@ -29,11 +29,11 @@ public class EarthquakeHybrid : MonoBehaviour
     [Header("💪 Intensidades")]
     [Tooltip("Intensidad inicial (muy leve)")]
     [Range(0.0001f, 0.01f)]
-    public float intensidadInicial = 0.002f;
+    public float intensidadInicial = 0.003f;   // ↑ antes 0.002f
 
     [Tooltip("Intensidad máxima")]
     [Range(0.005f, 0.1f)]
-    public float intensidadMaxima = 0.03f;
+    public float intensidadMaxima = 0.045f;    // ↑ antes 0.03f
 
     [Header("🏠 CONFIGURACIÓN DEL ESCENARIO")]
     [Tooltip("Transform del escenario/casa que se va a mover (NO el jugador)")]
@@ -45,19 +45,19 @@ public class EarthquakeHybrid : MonoBehaviour
     [Header("🌊 Movimiento (MUY SUAVE)")]
     [Tooltip("Frecuencia del movimiento principal")]
     [Range(0.5f, 5f)]
-    public float frecuenciaBase = 1.5f;
+    public float frecuenciaBase = 1.8f;        // ↑ antes 1.5f
 
     [Tooltip("Multiplicador de movimiento vertical (arriba/abajo)")]
     [Range(0.5f, 3f)]
-    public float multiplicadorVertical = 1.5f;
+    public float multiplicadorVertical = 1.8f; // ↑ antes 1.5f
 
     [Tooltip("Multiplicador de movimiento horizontal")]
     [Range(0.05f, 1f)]
-    public float multiplicadorHorizontal = 0.3f;
+    public float multiplicadorHorizontal = 0.4f; // ↑ antes 0.3f
 
     [Tooltip("Intensidad de rotación del escenario")]
     [Range(0f, 1f)]
-    public float intensidadRotacion = 0.2f;
+    public float intensidadRotacion = 0.3f;    // ↑ antes 0.2f
 
     [Header("⚡ Vibración Secundaria")]
     [Tooltip("Activar vibración de alta frecuencia")]
@@ -65,25 +65,25 @@ public class EarthquakeHybrid : MonoBehaviour
 
     [Tooltip("Frecuencia de vibración")]
     [Range(5f, 30f)]
-    public float frecuenciaVibracion = 12f;
+    public float frecuenciaVibracion = 16f;    // ↑ antes 12f
 
     [Tooltip("Intensidad de la vibración")]
     [Range(0f, 0.15f)]
-    public float intensidadVibracion = 0.05f;
+    public float intensidadVibracion = 0.08f;  // ↑ antes 0.05f
 
     [Header("↔️ Oscilación Direccional")]
     [Tooltip("Agregar oscilación dominante")]
     public bool usarOscilacionDireccional = true;
 
     [Tooltip("Eje principal (énfasis vertical)")]
-    public Vector3 direccionOscilacion = new Vector3(0.3f, 1f, 0.2f);
+    public Vector3 direccionOscilacion = new Vector3(0.4f, 1.2f, 0.3f); // ↑ antes (0.3, 1.0, 0.2)
 
     [Tooltip("Frecuencia de oscilación")]
     [Range(0.3f, 2f)]
-    public float frecuenciaOscilacion = 0.7f;
+    public float frecuenciaOscilacion = 0.9f;  // ↑ antes 0.7f
 
     [Range(0f, 0.5f)]
-    public float intensidadOscilacion = 0.2f;
+    public float intensidadOscilacion = 0.28f; // ↑ antes 0.2f
 
     [Header("🔊 Audio")]
     [Tooltip("AudioSource para el sonido del terremoto")]
@@ -103,7 +103,7 @@ public class EarthquakeHybrid : MonoBehaviour
     [Header("🔧 Suavizado")]
     [Tooltip("Velocidad de suavizado del movimiento")]
     [Range(3f, 20f)]
-    public float velocidadSuavizado = 10f;
+    public float velocidadSuavizado = 12f;     // ↑ antes 10f
 
     // Variables privadas
     private Vector3 posicionOriginalEscenario;
