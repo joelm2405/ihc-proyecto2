@@ -6,6 +6,12 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Scenes/Scene_House.unity
+    guid: 9df28576e625a7448a4d0d63431f871f
+  - enabled: 1
+    path: Assets/Scenes/Start_Menu.unity
+    guid: b33aaf66a13daf24699d836631b32872
+  - enabled: 1
     path: Assets/Scenes/1_Start_Menu.unity
     guid: d453435c61e09a54a9e1854fc3b5df6b
   - enabled: 1
@@ -14,12 +20,6 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/3_Tutorial.unity
     guid: 9a5e370987d36b949947b1ef3a446dbb
-  - enabled: 1
-    path: Assets/Scenes/Scene_House.unity
-    guid: 9df28576e625a7448a4d0d63431f871f
-  - enabled: 1
-    path: Assets/Scenes/Tutorial.unity
-    guid: b33aaf66a13daf24699d836631b32872
   - enabled: 1
     path: Assets/Scenes/Scene_1.unity
     guid: 99c9720ab356a0642a771bea13969a05
