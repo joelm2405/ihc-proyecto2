@@ -3,6 +3,7 @@ using UnityEngine.UI;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
 using UnityEngine.Events;
+using TMPro; // ✅ Añadido para eliminar textos TMP
 
 public class RadialSelection : MonoBehaviour
 {
@@ -158,11 +159,32 @@ public class RadialSelection : MonoBehaviour
                 image.fillAmount = (1f / numberOfRadialPart) - (angleBetweenPart / 360f);
             }
 
+            // ✅ NUEVO: Eliminar textos de los botones
+            DestroyChildTexts(spawnedRadialPart);
+
             spawnedParts.Add(spawnedRadialPart);
         }
 
-        Debug.Log($"✓ Menú creado con {numberOfRadialPart} segmentos");
+        Debug.Log($"✓ Menú creado con {numberOfRadialPart} segmentos (sin textos en botones)");
         Debug.Log("  0=Arriba (Reiniciar), 1=Derecha (Menú), 2=Abajo (Tutorial), 3=Izquierda (Volver)");
+    }
+
+    // ✅ NUEVA FUNCIÓN: Eliminar cualquier texto hijo de los segmentos
+    private void DestroyChildTexts(GameObject parent)
+    {
+        // Eliminar TextMeshPro
+        TextMeshProUGUI[] tmpTexts = parent.GetComponentsInChildren<TextMeshProUGUI>();
+        foreach (var text in tmpTexts)
+        {
+            Destroy(text.gameObject);
+        }
+
+        // Eliminar Text normal de Unity
+        Text[] normalTexts = parent.GetComponentsInChildren<Text>();
+        foreach (var text in normalTexts)
+        {
+            Destroy(text.gameObject);
+        }
     }
 
     public void GetSelectedRadialPart()
