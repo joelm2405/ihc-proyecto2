@@ -128,4 +128,20 @@ public class ScoreManager : MonoBehaviour
             Debug.Log("[ScoreManager] Score reseteado a 0");
         }
     }
+
+    public void AddPoints(float points)
+{
+    // Sumamos los puntos manualmente y aseguramos que el puntaje no exceda el rango máximo.
+    score += points;
+    score = Mathf.Clamp(score, minScore, maxScore);
+
+    // Notificamos el cambio de puntaje.
+    OnScoreChanged?.Invoke(score);
+
+    if (mostrarDebug)
+    {
+        Debug.Log($"<color=green>[ScoreManager] Puntos sumados: {points} | Score: {score:F1}</color>");
+    }
+}
+
 }

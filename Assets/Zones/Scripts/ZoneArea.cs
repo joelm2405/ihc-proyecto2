@@ -4,7 +4,7 @@ using UnityEngine;
 [RequireComponent(typeof(BoxCollider))]
 public class ZoneArea : MonoBehaviour
 {
-    public enum ZoneType { Safe, Danger }
+    public enum ZoneType { Safe, Danger, Blue } // A√±adido Blue para la zona azul
 
     [Header("Configuracion de Zona")]
     public ZoneType type = ZoneType.Safe;
@@ -19,6 +19,7 @@ public class ZoneArea : MonoBehaviour
     // Variables privadas
     private bool jugadorDentro = false;
     private bool ultimoEstadoTerremoto = false;
+    private bool puntosSumados = false; // Para asegurarse de que solo se sumen los puntos una vez
 
     void Reset()
     {
@@ -49,27 +50,27 @@ public class ZoneArea : MonoBehaviour
 
     void OnTriggerEnter(Collider other)
     {
-        // Buscar por multiples formas
-        if (EsJugador(other))
+        // Verificar si la mochila entra en la zona
+        if (EsJugador(other) || other.CompareTag("Mochila"))
         {
             jugadorDentro = true;
 
             if (mostrarDebug)
             {
-                Debug.Log($"<color=cyan>[{zoneName}] >>> Jugador ENTRO <<<</color>");
+                Debug.Log($"<color=cyan>[{zoneName}] >>> Objetos ENTRO <<<</color>");
             }
         }
     }
 
     void OnTriggerExit(Collider other)
     {
-        if (EsJugador(other))
+        if (EsJugador(other) || other.CompareTag("Mochila"))
         {
             jugadorDentro = false;
 
             if (mostrarDebug)
             {
-                Debug.Log($"<color=cyan>[{zoneName}] <<< Jugador SALIO >>></color>");
+                Debug.Log($"<color=cyan>[{zoneName}] <<< Objetos SALIERON >>></color>");
             }
         }
     }
@@ -100,28 +101,21 @@ public class ZoneArea : MonoBehaviour
             ultimoEstadoTerremoto = terremotoActivo;
         }
 
-        // REGLA SIMPLE: Solo aplicar puntos si AMBAS condiciones son verdaderas
-        if (jugadorDentro && terremotoActivo)
+        // Si es la zona azul, sumar 50 puntos solo una vez
+        if (jugadorDentro && terremotoActivo && type == ZoneType.Blue && !puntosSumados)
         {
-            // Aplicar puntos
-            float tasa = type == ZoneType.Safe ? ScoreManager.I.safeRate : ScoreManager.I.dangerRate;
-            ScoreManager.I.AddOverTime(tasa);
-
-            // Log ocasional (cada 2 segundos aprox)
-            if (mostrarDebug && Time.frameCount % 120 == 0)
+            ScoreManager.I.SetScore(ScoreManager.I.score + 50f);  // Sumar 50 puntos
+            puntosSumados = true;  // Asegurar que solo se sumen una vez
+            if (mostrarDebug)
             {
-                string accion = type == ZoneType.Safe ? "SUMANDO" : "RESTANDO";
-                Debug.Log($"<color=green>[{zoneName}] {accion} puntos (tasa: {tasa})</color>");
+                Debug.Log($"<color=green>[{zoneName}] Suma de 50 puntos!</color>");
             }
         }
-        else
+        else if (jugadorDentro && terremotoActivo && type != ZoneType.Blue)
         {
-            // NO hacer nada - no aplicar tasas
-            // Log solo cuando hay jugador pero terremoto no est· activo
-            if (jugadorDentro && !terremotoActivo && mostrarDebug && Time.frameCount % 120 == 0)
-            {
-                Debug.Log($"<color=orange>[{zoneName}] Jugador dentro pero terremoto NO activo - NO se cuentan puntos</color>");
-            }
+            // Aplicar puntos en zonas normales (Segura o de Peligro)
+            float tasa = type == ZoneType.Safe ? ScoreManager.I.safeRate : ScoreManager.I.dangerRate;
+            ScoreManager.I.AddOverTime(tasa);
         }
     }
 
@@ -151,7 +145,7 @@ public class ZoneArea : MonoBehaviour
         // Contando puntos: muy visible
         if (jugadorDentro && terremotoActivo)
         {
-            color = type == ZoneType.Safe ? new Color(0f, 1f, 0f, 0.9f) : new Color(1f, 0f, 0f, 0.9f);
+            color = type == ZoneType.Safe ? new Color(0f, 1f, 0f, 0.9f) : type == ZoneType.Danger ? new Color(1f, 0f, 0f, 0.9f) : new Color(0f, 0f, 1f, 0.9f); // Zona Azul es azul
         }
         // Jugador dentro pero terremoto inactivo: amarillo
         else if (jugadorDentro)
@@ -161,14 +155,14 @@ public class ZoneArea : MonoBehaviour
         // Fuera: transparente
         else
         {
-            color = type == ZoneType.Safe ? new Color(0f, 1f, 0f, 0.2f) : new Color(1f, 0f, 0f, 0.2f);
+            color = type == ZoneType.Safe ? new Color(0f, 1f, 0f, 0.2f) : type == ZoneType.Danger ? new Color(1f, 0f, 0f, 0.2f) : new Color(0f, 0f, 1f, 0.2f); // Zona Azul es azul
         }
         
         Gizmos.color = color;
         Gizmos.matrix = transform.localToWorldMatrix;
         Gizmos.DrawWireCube(boxCol.center, boxCol.size);
         
-        // Dibujar un cubo sÛlido cuando est· contando
+        // Dibujar un cubo s√≥lido cuando est√© contando
         if (jugadorDentro && terremotoActivo)
         {
             color.a = 0.3f;
