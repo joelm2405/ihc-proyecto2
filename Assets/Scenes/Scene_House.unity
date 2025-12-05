@@ -1531,8 +1531,8 @@ MonoBehaviour:
   frecuenciaOscilacion: 2
   intensidadOscilacion: 0.3
   audioSource: {fileID: 0}
-  sonidoTerremoto: {fileID: 0}
-  volumenInicial: 0.3
+  sonidoTerremoto: {fileID: 8300000, guid: 5c7e5ce587cf854438ee8092c898c4ff, type: 3}
+  volumenInicial: 0.6
   volumenMaximo: 0.8
   velocidadSuavizado: 8
   mostrarInfoConsola: 1
