@@ -1,262 +1,144 @@
 using UnityEngine;
 
-/// <summary>
-/// Sistema completo de movimiento y agacharse para OVRCameraRig con interacciones
-/// Compatible con el sistema de interacción de Meta
-/// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class OVRPlayerMovementAndCrouch : MonoBehaviour
 {
     [Header("=== MOVIMIENTO ===")]
-    [Tooltip("Velocidad de movimiento en m/s")]
     public float velocidadMovimiento = 3f;
-
-    [Tooltip("Velocidad de rotación en grados/s")]
     public float velocidadRotacion = 90f;
-
-    [Tooltip("Usar rotación snap (30 grados) en vez de suave")]
     public bool rotacionSnap = true;
-
-    [Tooltip("Ángulo de rotación snap")]
     public float anguloSnap = 30f;
 
     [Header("=== AGACHARSE ===")]
-    [Tooltip("Cuánto bajar cuando se agacha (en metros)")]
     public float cantidadAgacharse = 0.7f;
-
-    [Tooltip("Velocidad de transición al agacharse")]
     public float velocidadTransicion = 5f;
 
     [Header("=== ALTURA BASE ===")]
-    [Tooltip("Offset de altura base del jugador")]
     public float alturaBase = 0f;
 
     [Header("=== GRAVEDAD ===")]
-    [Tooltip("Aplicar gravedad al jugador")]
     public bool aplicarGravedad = true;
-
-    [Tooltip("Fuerza de gravedad")]
     public float fuerzaGravedad = 9.81f;
 
     [Header("=== REFERENCIAS ===")]
     public Transform trackingSpace;
     public Transform centerEyeAnchor;
 
-    // Componentes
-    private CharacterController characterController;
+    [Header("Auto-switch por mano")]
+    public PerHandAutoSwitcher handSwitch; // arrÃ¡stralo desde el Rig
 
-    // Estado de agacharse
-    private bool estaAgachado = false;
-    private float offsetObjetivo;
-    private float offsetActual;
-    private float alturaCharacterControllerOriginal;
-    private Vector3 centroCharacterControllerOriginal;
-
-    // Estado de movimiento
-    private float rotacionPendiente = 0f;
-    private bool rotacionEnProgreso = false;
-    private Vector3 velocidadVertical = Vector3.zero;
+    CharacterController cc;
+    bool estaAgachado = false;
+    float offsetObjetivo, offsetActual;
+    float alturaCCOriginal;
+    Vector3 centroCCOriginal;
+    bool rotacionEnProgreso = false;
+    Vector3 velVertical = Vector3.zero;
 
     void Start()
     {
-        // Obtener CharacterController
-        characterController = GetComponent<CharacterController>();
+        cc = GetComponent<CharacterController>();
 
-        // Buscar OVRCameraRig automáticamente
-        OVRCameraRig cameraRig = GetComponentInChildren<OVRCameraRig>();
+        var rig = GetComponentInChildren<OVRCameraRig>();
+        if (!rig) { Debug.LogError("OVRCameraRig no encontrado."); enabled = false; return; }
 
-        if (cameraRig == null)
-        {
-            Debug.LogError("No se encontró OVRCameraRig como hijo. Este script debe estar en el padre del OVRCameraRig.");
-            enabled = false;
-            return;
-        }
+        if (!trackingSpace)   trackingSpace   = rig.trackingSpace;
+        if (!centerEyeAnchor) centerEyeAnchor = rig.centerEyeAnchor;
+        if (!handSwitch)      handSwitch      = GetComponentInChildren<PerHandAutoSwitcher>(true);
 
-        // Asignar referencias automáticamente
-        if (trackingSpace == null)
-            trackingSpace = cameraRig.trackingSpace;
+        alturaCCOriginal = cc.height;
+        centroCCOriginal = cc.center;
 
-        if (centerEyeAnchor == null)
-            centerEyeAnchor = cameraRig.centerEyeAnchor;
-
-        // Guardar valores originales del CharacterController
-        alturaCharacterControllerOriginal = characterController.height;
-        centroCharacterControllerOriginal = characterController.center;
-
-        // Establecer altura inicial
-        offsetActual = alturaBase;
-        offsetObjetivo = alturaBase;
-
+        offsetActual = offsetObjetivo = alturaBase;
         AplicarAltura(offsetActual);
-
-        Debug.Log($"OVRPlayerMovementAndCrouch inicializado. Altura base: {alturaBase}m");
     }
 
     void Update()
     {
-        // === AGACHARSE ===
-        if (OVRInput.GetDown(OVRInput.Button.Two, OVRInput.Controller.RTouch))
-        {
-            ToggleCrouch();
-        }
+        if (OVRInput.GetDown(OVRInput.Button.Two)) ToggleCrouch();
 
-        // Suavizar transición de agacharse
         if (Mathf.Abs(offsetActual - offsetObjetivo) > 0.001f)
         {
             offsetActual = Mathf.Lerp(offsetActual, offsetObjetivo, Time.deltaTime * velocidadTransicion);
             AplicarAltura(offsetActual);
         }
 
-        // === MOVIMIENTO ===
-        ProcesarMovimiento();
-
-        // === ROTACIÓN ===
-        ProcesarRotacion();
-
-        // === GRAVEDAD ===
-        if (aplicarGravedad)
-        {
-            AplicarGravedad();
-        }
+        ProcesarMovimientoYRotacion();
+        if (aplicarGravedad) AplicarGravedad();
     }
 
-    void ProcesarMovimiento()
+    void ProcesarMovimientoYRotacion()
     {
-        // Obtener input del joystick izquierdo
-        Vector2 input = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.LTouch);
+        // Decide quÃ© lado tiene mando activo
+        bool leftHasCtrl  = handSwitch ? handSwitch.LeftIsController  : OVRInput.GetControllerPositionTracked(OVRInput.Controller.LTouch);
+        bool rightHasCtrl = handSwitch ? handSwitch.RightIsController : OVRInput.GetControllerPositionTracked(OVRInput.Controller.RTouch);
 
-        if (input.magnitude > 0.1f)
+        // Movimiento: prioriza mando izquierdo; si no hay, usa el derecho; si ninguno, no mueve.
+        OVRInput.Controller moveCtrl =
+            leftHasCtrl  ? OVRInput.Controller.LTouch :
+            rightHasCtrl ? OVRInput.Controller.RTouch : OVRInput.Controller.None;
+
+        // RotaciÃ³n: prioriza mando derecho; si no hay, usa el izquierdo.
+        OVRInput.Controller rotCtrl =
+            rightHasCtrl ? OVRInput.Controller.RTouch :
+            leftHasCtrl  ? OVRInput.Controller.LTouch : OVRInput.Controller.None;
+
+        if (moveCtrl != OVRInput.Controller.None)
         {
-            // Dirección basada en donde mira la cámara (solo rotación Y)
-            Vector3 direccionMirada = centerEyeAnchor.forward;
-            direccionMirada.y = 0;
-            direccionMirada.Normalize();
-
-            Vector3 direccionDerecha = centerEyeAnchor.right;
-            direccionDerecha.y = 0;
-            direccionDerecha.Normalize();
-
-            // Calcular movimiento
-            Vector3 movimiento = (direccionMirada * input.y + direccionDerecha * input.x);
-            movimiento *= velocidadMovimiento * Time.deltaTime;
-
-            // Aplicar movimiento
-            characterController.Move(movimiento);
-        }
-    }
-
-    void ProcesarRotacion()
-    {
-        // Obtener input del joystick derecho (eje X para rotación)
-        float inputRotacion = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, OVRInput.Controller.RTouch).x;
-
-        if (rotacionSnap)
-        {
-            // Rotación snap (como la mayoría de juegos VR)
-            if (!rotacionEnProgreso && Mathf.Abs(inputRotacion) > 0.75f)
+            Vector2 in2 = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, moveCtrl);
+            if (in2.sqrMagnitude > 0.01f)
             {
-                rotacionEnProgreso = true;
-                float rotacion = inputRotacion > 0 ? anguloSnap : -anguloSnap;
-                transform.RotateAround(centerEyeAnchor.position, Vector3.up, rotacion);
-            }
-            else if (Mathf.Abs(inputRotacion) < 0.3f)
-            {
-                rotacionEnProgreso = false;
+                Vector3 fwd = centerEyeAnchor.forward;  fwd.y = 0; fwd.Normalize();
+                Vector3 rgt = centerEyeAnchor.right;    rgt.y = 0; rgt.Normalize();
+                Vector3 move = (fwd * in2.y + rgt * in2.x) * (velocidadMovimiento * Time.deltaTime);
+                cc.Move(move);
             }
         }
-        else
+
+        if (rotCtrl != OVRInput.Controller.None)
         {
-            // Rotación suave
-            if (Mathf.Abs(inputRotacion) > 0.1f)
+            float x = OVRInput.Get(OVRInput.Axis2D.PrimaryThumbstick, rotCtrl).x;
+            if (rotacionSnap)
             {
-                float rotacion = inputRotacion * velocidadRotacion * Time.deltaTime;
-                transform.RotateAround(centerEyeAnchor.position, Vector3.up, rotacion);
+                if (!rotacionEnProgreso && Mathf.Abs(x) > 0.75f)
+                {
+                    rotacionEnProgreso = true;
+                    float step = x > 0 ? anguloSnap : -anguloSnap;
+                    transform.RotateAround(centerEyeAnchor.position, Vector3.up, step);
+                }
+                else if (Mathf.Abs(x) < 0.3f) rotacionEnProgreso = false;
+            }
+            else
+            {
+                if (Mathf.Abs(x) > 0.1f)
+                {
+                    float step = x * velocidadRotacion * Time.deltaTime;
+                    transform.RotateAround(centerEyeAnchor.position, Vector3.up, step);
+                }
             }
         }
     }
 
     void AplicarGravedad()
     {
-        if (characterController.isGrounded)
-        {
-            velocidadVertical.y = -0.5f; // Pequeña fuerza para mantener en el suelo
-        }
-        else
-        {
-            velocidadVertical.y -= fuerzaGravedad * Time.deltaTime;
-        }
-
-        characterController.Move(velocidadVertical * Time.deltaTime);
+        if (cc.isGrounded) velVertical.y = -0.5f;
+        else velVertical.y -= fuerzaGravedad * Time.deltaTime;
+        cc.Move(velVertical * Time.deltaTime);
     }
 
     void ToggleCrouch()
     {
         estaAgachado = !estaAgachado;
-
-        if (estaAgachado)
-        {
-            offsetObjetivo = alturaBase - cantidadAgacharse;
-            Debug.Log($"Agachándose - Nueva altura: {offsetObjetivo}m");
-        }
-        else
-        {
-            offsetObjetivo = alturaBase;
-            Debug.Log($"Levantándose - Nueva altura: {offsetObjetivo}m");
-        }
+        offsetObjetivo = estaAgachado ? (alturaBase - cantidadAgacharse) : alturaBase;
     }
 
     void AplicarAltura(float offset)
     {
-        if (trackingSpace == null) return;
+        if (!trackingSpace) return;
+        var lp = trackingSpace.localPosition; lp.y = offset; trackingSpace.localPosition = lp;
 
-        // Mover el TrackingSpace hacia arriba/abajo
-        Vector3 nuevaPosicion = trackingSpace.localPosition;
-        nuevaPosicion.y = offset;
-        trackingSpace.localPosition = nuevaPosicion;
-
-        // Ajustar CharacterController
-        float nuevaAltura = alturaCharacterControllerOriginal + offset;
-        characterController.height = nuevaAltura;
-
-        Vector3 nuevoCentro = centroCharacterControllerOriginal;
-        nuevoCentro.y = nuevaAltura / 2f;
-        characterController.center = nuevoCentro;
-    }
-
-    // === MÉTODOS PÚBLICOS ===
-    public bool EstaAgachado() => estaAgachado;
-
-    public void Agacharse()
-    {
-        if (!estaAgachado) ToggleCrouch();
-    }
-
-    public void Levantarse()
-    {
-        if (estaAgachado) ToggleCrouch();
-    }
-
-    public void SetVelocidadMovimiento(float velocidad)
-    {
-        velocidadMovimiento = velocidad;
-    }
-
-    // === VISUALIZACIÓN ===
-    void OnDrawGizmos()
-    {
-        if (!Application.isPlaying || trackingSpace == null) return;
-
-        Vector3 posicion = transform.position;
-        Gizmos.color = estaAgachado ? Color.yellow : Color.green;
-        Gizmos.DrawLine(posicion, posicion + Vector3.up * (offsetActual + 1.7f));
-
-        // Visualizar dirección de movimiento
-        if (centerEyeAnchor != null)
-        {
-            Gizmos.color = Color.blue;
-            Vector3 direccion = centerEyeAnchor.forward;
-            direccion.y = 0;
-            Gizmos.DrawRay(centerEyeAnchor.position, direccion * 0.5f);
-        }
+        float h = alturaCCOriginal + offset;
+        cc.height = h;
+        var c = centroCCOriginal; c.y = h * 0.5f; cc.center = c;
     }
 }

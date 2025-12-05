@@ -1,0 +1,14 @@
+# Blender 4.1.0 MTL File: 'FinalTent1.blend'
+# www.blender.org
+
+newmtl Tent
+Ka 1.000000 1.000000 1.000000
+Ks 0.500000 0.500000 0.500000
+Ke 0.000000 0.000000 0.000000
+Ni 1.450000
+d 1.000000
+illum 2
+map_Kd E:/Zeel/Test files/Tent/Textures/Final_Tent_Tent_BaseColor.png
+map_Ns E:/Zeel/Test files/Tent/Textures/Final_Tent_Tent_Roughness.png
+map_refl E:/Zeel/Test files/Tent/Textures/Final_Tent_Tent_Metallic.png
+map_Bump -bm 1.000000 E:/Zeel/Test files/Tent/Textures/Final_Tent_Tent_Normal.png
