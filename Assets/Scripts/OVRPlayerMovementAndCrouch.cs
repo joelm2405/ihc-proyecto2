@@ -3,6 +3,7 @@ using UnityEngine;
 /// <summary>
 /// Sistema completo de movimiento y agacharse para OVRCameraRig con interacciones
 /// Compatible con el sistema de interacción de Meta
+/// ARREGLADO: Ahora ajusta el Capsule Collider al agacharse
 /// </summary>
 [RequireComponent(typeof(CharacterController))]
 public class OVRPlayerMovementAndCrouch : MonoBehaviour
@@ -42,6 +43,10 @@ public class OVRPlayerMovementAndCrouch : MonoBehaviour
     public Transform trackingSpace;
     public Transform centerEyeAnchor;
 
+    [Header("=== COLLIDER DEL JUGADOR ===")]
+    [Tooltip("Capsule Collider del jugador (se busca automaticamente si esta vacio)")]
+    public CapsuleCollider capsuleCollider;
+
     // Componentes
     private CharacterController characterController;
 
@@ -51,6 +56,10 @@ public class OVRPlayerMovementAndCrouch : MonoBehaviour
     private float offsetActual;
     private float alturaCharacterControllerOriginal;
     private Vector3 centroCharacterControllerOriginal;
+
+    // Valores originales del Capsule Collider
+    private float alturaCapsuleOriginal;
+    private Vector3 centroCapsuleOriginal;
 
     // Estado de movimiento
     private float rotacionPendiente = 0f;
@@ -79,9 +88,31 @@ public class OVRPlayerMovementAndCrouch : MonoBehaviour
         if (centerEyeAnchor == null)
             centerEyeAnchor = cameraRig.centerEyeAnchor;
 
+        // Buscar el Capsule Collider del jugador si no esta asignado
+        if (capsuleCollider == null)
+        {
+            capsuleCollider = GetComponentInChildren<CapsuleCollider>();
+
+            if (capsuleCollider != null)
+            {
+                Debug.Log($"Capsule Collider encontrado automaticamente en: {capsuleCollider.gameObject.name}");
+            }
+            else
+            {
+                Debug.LogWarning("No se encontro Capsule Collider. El agacharse no ajustara el collider del jugador.");
+            }
+        }
+
         // Guardar valores originales del CharacterController
         alturaCharacterControllerOriginal = characterController.height;
         centroCharacterControllerOriginal = characterController.center;
+
+        // Guardar valores originales del Capsule Collider
+        if (capsuleCollider != null)
+        {
+            alturaCapsuleOriginal = capsuleCollider.height;
+            centroCapsuleOriginal = capsuleCollider.center;
+        }
 
         // Establecer altura inicial
         offsetActual = alturaBase;
@@ -221,6 +252,22 @@ public class OVRPlayerMovementAndCrouch : MonoBehaviour
         Vector3 nuevoCentro = centroCharacterControllerOriginal;
         nuevoCentro.y = nuevaAltura / 2f;
         characterController.center = nuevoCentro;
+
+        // ===== NUEVO: AJUSTAR CAPSULE COLLIDER =====
+        if (capsuleCollider != null)
+        {
+            // Calcular la nueva altura del capsule basada en si esta agachado
+            float factorReduccion = estaAgachado ? (cantidadAgacharse / alturaCapsuleOriginal) : 0f;
+            float nuevaAlturaCapsule = alturaCapsuleOriginal - (factorReduccion * alturaCapsuleOriginal);
+
+            // Aplicar nueva altura
+            capsuleCollider.height = nuevaAlturaCapsule;
+
+            // Ajustar el centro para que la base del capsule se mantenga en el suelo
+            Vector3 nuevoCentroCapsule = centroCapsuleOriginal;
+            nuevoCentroCapsule.y = nuevaAlturaCapsule / 2f;
+            capsuleCollider.center = nuevoCentroCapsule;
+        }
     }
 
     // === MÉTODOS PÚBLICOS ===
@@ -257,6 +304,55 @@ public class OVRPlayerMovementAndCrouch : MonoBehaviour
             Vector3 direccion = centerEyeAnchor.forward;
             direccion.y = 0;
             Gizmos.DrawRay(centerEyeAnchor.position, direccion * 0.5f);
+        }
+
+        // Visualizar el capsule collider
+        if (capsuleCollider != null)
+        {
+            Gizmos.color = estaAgachado ? new Color(1f, 1f, 0f, 0.3f) : new Color(0f, 1f, 0f, 0.3f);
+
+            Vector3 centro = capsuleCollider.transform.TransformPoint(capsuleCollider.center);
+            float altura = capsuleCollider.height;
+            float radio = capsuleCollider.radius;
+
+            // Dibujar wireframe del capsule
+            DrawWireCapsule(centro, radio, altura);
+        }
+    }
+
+    void DrawWireCapsule(Vector3 center, float radius, float height)
+    {
+        float halfHeight = height * 0.5f - radius;
+
+        // Dibujar circulos superior e inferior
+        DrawWireCircle(center + Vector3.up * halfHeight, radius);
+        DrawWireCircle(center - Vector3.up * halfHeight, radius);
+
+        // Dibujar lineas verticales
+        Gizmos.DrawLine(center + Vector3.up * halfHeight + Vector3.forward * radius,
+                       center - Vector3.up * halfHeight + Vector3.forward * radius);
+        Gizmos.DrawLine(center + Vector3.up * halfHeight - Vector3.forward * radius,
+                       center - Vector3.up * halfHeight - Vector3.forward * radius);
+        Gizmos.DrawLine(center + Vector3.up * halfHeight + Vector3.right * radius,
+                       center - Vector3.up * halfHeight + Vector3.right * radius);
+        Gizmos.DrawLine(center + Vector3.up * halfHeight - Vector3.right * radius,
+                       center - Vector3.up * halfHeight - Vector3.right * radius);
+    }
+
+    void DrawWireCircle(Vector3 center, float radius)
+    {
+        int segments = 16;
+        float angleStep = 360f / segments;
+
+        Vector3 prevPoint = center + Vector3.forward * radius;
+
+        for (int i = 1; i <= segments; i++)
+        {
+            float angle = angleStep * i;
+            float rad = angle * Mathf.Deg2Rad;
+            Vector3 newPoint = center + new Vector3(Mathf.Sin(rad) * radius, 0f, Mathf.Cos(rad) * radius);
+            Gizmos.DrawLine(prevPoint, newPoint);
+            prevPoint = newPoint;
         }
     }
 }

@@ -4,7 +4,7 @@ public class ScoreOnGUI : MonoBehaviour
 {
     public bool bottomLeft = true;
     public Vector2 margin = new Vector2(16, 16);
-    public int fontSize = 22;
+    public int fontSize = 17;
 
     GUIStyle _style;
     Texture2D _bg;
